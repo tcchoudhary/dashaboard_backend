@@ -34,7 +34,7 @@ app.use('/uploads', express.static('./uploads'));
 app.use('/api/admin', Router);
 
 app.get('/api/ping', (req, res) => {
-    res.status(200).send('pong');
+    res.status(200).send('server is running');
 });
 
 
