@@ -16,14 +16,16 @@ updateCabinStatus();
 const app = express();
 const logger = require("morgan");
 require('dotenv').config();
-const port = process.env.PORT || 8000;
+
+const port = 8000;
+const host = '0.0.0.0';
 app.use(bodyParser.urlencoded({ limit: '5000mb', extended: false }));
 app.use(bodyParser.json({ limit: '5000mb' }));
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 app.use(logger('dev'));
 
-app.get('/health', (req, res) => {
+app.get('/', (req, res) => {
     res.send("Welcome");
 });
 
@@ -48,8 +50,8 @@ app.use((req, res) => {
 });
 
 
-app.listen(port, () => {
-    console.log(`server is running at ${port}`)
+app.listen(port, host, () => {
+    console.log(`server is running on http://${host}:${port}`)
 });
 
 
