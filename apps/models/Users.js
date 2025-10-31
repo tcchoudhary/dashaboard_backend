@@ -1,5 +1,6 @@
 const { Sequelize, DataTypes } = require("sequelize");
 const sequelize = require("../config/database"); // Import your Sequelize instance
+const TicketModel = require("./RiseTicket");
 
 const Users = sequelize.define("users", {
   id: {
@@ -46,7 +47,7 @@ const Users = sequelize.define("users", {
     type: DataTypes.DATE,
     allowNull: true,
   },
-   created_by: {
+  created_by: {
     type: DataTypes.DATE,
     allowNull: true,
   },
@@ -67,6 +68,17 @@ const Users = sequelize.define("users", {
 );
 
 
+
+Users.hasMany(TicketModel, {
+  foreignKey: "user_id",
+});
+
+
+TicketModel.belongsTo(Users, {
+  foreignKey: "user_id",
+  targetKey: "id",
+  as: "user",
+});
 
 
 module.exports = Users;

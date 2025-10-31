@@ -6,6 +6,7 @@ const setupCron = require("./apps/cronJob/cronJob"); // Jo file aapne di thi, us
 const { setupCronJobs, updateCabinStatus } = require("./apps/cronJob/cabinCron"); // Import the setup function
 const {
     createDailyHealthSnapshot, setupHealthSnapshotCron } = require("./apps/cronJob/healthcron"); // Import the setup function
+require("./apps/models/relation/relations");
 
 setupCronJobs();
 setupCron();

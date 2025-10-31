@@ -1,6 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-
+const Complex = require("./Complex");
 const Ticket = sequelize.define(
   "Ticket",
   {
@@ -15,7 +15,7 @@ const Ticket = sequelize.define(
       unique: true,
     },
     complex_id: {
-      type: DataTypes.STRING,
+      type: DataTypes.BIGINT(20).UNSIGNED,
       allowNull: false,
     },
     user_id: {
@@ -67,6 +67,10 @@ const Ticket = sequelize.define(
     timestamps: false,
   }
 );
+
+
+
+
 
 
 // Ticket.sync({alter:true}).then(()=>{

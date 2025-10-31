@@ -410,7 +410,11 @@ const ProfileUpdate = async (req, res) => {
 
 const Sitelist = async (req, res) => {
   try {
-    const data = await Complex.findAll();
+    // const data = await Complex.findAll();
+    const data = await Complex.findAll({
+      attributes: ["id", "name", "address", "city"], // ✅ Only these columns
+    });
+
     if (data.length == 0) {
       return res.status(404).json({ status: 0, message: "data not found" });
     }
@@ -743,13 +747,70 @@ const SpecificCabinConnectionStatusUpdate = async (req, res) => {
   }
 };
 
+// const ComplexwiseLowWaterLevelList = async (req, res) => {
+//   try {
+//     const devices = await DeviceHealthStatus.findAll({
+//       attributes: ["cabin_id", "freshWaterLevel", "recycleWaterLevel"],
+//       // where: {
+//       //   [Op.or]: [{ freshWaterLevel: "LOW" }, { recycleWaterLevel: "LOW" }],
+//       // },
+//       include: [
+//         {
+//           model: CabinModel,
+//           as: "cabin",
+//           attributes: ["complex_id", "cabin_name"],
+//           required: true,
+//           include: [
+//             {
+//               model: Complex,
+//               as: "complex",
+//               attributes: ["name"],
+//               required: true,
+//             },
+//           ],
+//         },
+//       ],
+//     });
+
+//     const summary = devices.reduce((acc, device) => {
+//       const complexId = device.cabin.complex_id;
+//       const complexName = device.cabin.complex.name;
+//       const cabinName = device.cabin.cabin_name;
+//       if (!acc[complexId]) {
+//         acc[complexId] = {
+//           complexId: complexId,
+//           complex_name: complexName,
+//           low_water_cabins: 0,
+//           low_water_cabin_names: [],
+//         };
+//       }
+//       acc[complexId].low_water_cabins++;
+//       acc[complexId].low_water_cabin_names.push(cabinName);
+//       return acc;
+//     }, {});
+
+//     const summaryArray = Object.values(summary);
+
+//     res.json({
+//       message: "Low water level complexes retrieved successfully",
+//       complexes: summaryArray,
+//       devices,
+//     });
+//   } catch (error) {
+//     console.error("Error in ComplexwiseLowWaterLevelList:", error.message);
+//     res.status(500).json({ error: "Server error", details: error.message });
+//   }
+// };
+
+
+
 const ComplexwiseLowWaterLevelList = async (req, res) => {
   try {
     const devices = await DeviceHealthStatus.findAll({
       attributes: ["cabin_id", "freshWaterLevel", "recycleWaterLevel"],
-      // where: {
-      //   [Op.or]: [{ freshWaterLevel: "LOW" }, { recycleWaterLevel: "LOW" }],
-      // },
+      where: {
+        [Op.or]: [{ freshWaterLevel: "LOW" }, { recycleWaterLevel: "LOW" }],
+      },
       include: [
         {
           model: CabinModel,
@@ -1084,6 +1145,48 @@ const SpecificCabinWaterLevelUpdate = async (req, res) => {
   }
 };
 
+
+
+const UserDelete = async (req, res) => {
+  try {
+    const { user_id } = { ...req.body, ...req.query }; // Allow both query or body input
+
+    // ✅ Validation
+    if (!user_id) {
+      return res.status(400).json({
+        status: 0,
+        message: "user_id is required",
+      });
+    }
+
+    // ✅ Check if user exists
+    const user = await Users.findOne({ where: { id: user_id } });
+    if (!user) {
+      return res.status(404).json({
+        status: 0,
+        message: "User not found",
+      });
+    }
+
+    // ✅ Delete user
+    await Users.destroy({ where: { id: user_id } });
+
+    return res.status(200).json({
+      status: 1,
+      message: "User deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error in UserDelete:", error);
+    return res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
+
 // const AllComplexesFaultList = async (req, res) => {
 //   try {
 //     // Fetch all DeviceHealthStatus records with Cabin and Complex
@@ -1402,7 +1505,7 @@ const AllComplexesFaultList = async (req, res) => {
     }
 
     const isFaulty = (field, value) => {
-      return value !== "OK" && value !== "Working" && value !== "GOOD" && value !== "LOW";
+      return value !== "OK" && value !== "Working" && value !== "GOOD" && value !== "NORMAL";
     };
 
     // Group devices by complex and process faults
@@ -1667,6 +1770,87 @@ const SpecificCabinFaultUpdateByComplexName = async (req, res) => {
 
 
 
+// const TicketRisedList = async (req, res) => {
+//   try {
+//     const {
+//       type,
+//       status,
+//       complex_id,
+//       limit = 10,
+//       offset = 0,
+//     } = { ...req.query, ...req.body };
+
+//     const whereClause = {};
+
+//     if (!type || type === "ACTIVE") {
+//       // ✅ All except closed
+//       whereClause.status = { [Op.ne]: "Closed" };
+//     } else if (type === "Closed") {
+//       // ✅ Only closed
+//       whereClause.status = "Closed";
+//     } else if (
+//       ["RAISED", "QUEUED", "SELF_ASSIGNED", "TEAM_ASSIGNED"].includes(type)
+//     ) {
+//       // ✅ Only that type + ignore closed
+//       whereClause.type = type;
+//       whereClause.status = { [Op.ne]: "Closed" };
+//     }
+
+//     // Optional: status filter override (only if needed separately)
+//     if (
+//       status &&
+//       ["Active", "In Progress", "Queued", "Resolved"].includes(status) &&
+//       type !== "ACTIVE" &&
+//       type !== "CLOSED"
+//     ) {
+//       whereClause.status = status;
+//     }
+
+//     // Optional: Filter by complex
+//     if (complex_id) {
+//       whereClause.complex_id = complex_id;
+//     }
+
+//     const tickets = await TicketModel.findAll({
+//       attributes: [
+//         "id",
+//         "ticket_id",
+//         "complex_id",
+//         "user_id",
+//         "title",
+//         "type",
+//         "status",
+//         "created_at",
+//       ],
+//       where: whereClause,
+//       limit: parseInt(limit),
+//       offset: parseInt(offset),
+//       order: [["created_at", "DESC"]],
+//     });
+//     const total = await TicketModel.count({ where: whereClause });
+//     if (tickets.length === 0) {
+//       return res.status(404).send({
+//         message: "Record not found",
+//         status: "0",
+//       });
+//     }
+//     res.json({
+//       message: "Tickets retrieved successfully",
+//       data: tickets,
+//       pagination: {
+//         total,
+//         limit: parseInt(limit),
+//         offset: parseInt(offset),
+//         pages: Math.ceil(total / limit),
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error in TicketRisedList:", error.message);
+//     res.status(500).json({ error: "Server error", details: error.message });
+//   }
+// };
+
+
 const TicketRisedList = async (req, res) => {
   try {
     const {
@@ -1712,19 +1896,50 @@ const TicketRisedList = async (req, res) => {
       attributes: [
         "id",
         "ticket_id",
-        "complex_id",
-        "user_id",
         "title",
         "type",
         "status",
         "created_at",
+        [TicketModel.sequelize.col("user.firstname"), "user_firstname"],
+        [TicketModel.sequelize.col("user.lastname"), "user_lastname"],
+        [TicketModel.sequelize.col("complex.name"), "complex_name"], // Assuming 'name' field in Complex model
       ],
       where: whereClause,
+      include: [
+        {
+          model: Users,
+          as: "user",
+          attributes: [],
+          required: true,
+        },
+        {
+          model: Complex,
+          as: "complex",
+          attributes: [],
+          required: true,
+        },
+      ],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [["created_at", "DESC"]],
     });
-    const total = await TicketModel.count({ where: whereClause });
+    const total = await TicketModel.count({
+      where: whereClause,
+      include: [
+        {
+          model: Users,
+          as: "user",
+          attributes: [],
+          required: true,
+        },
+        {
+          model: Complex,
+          as: "complex",
+          attributes: [],
+          required: true,
+        },
+      ],
+    });
     if (tickets.length === 0) {
       return res.status(404).send({
         message: "Record not found",
@@ -1746,6 +1961,7 @@ const TicketRisedList = async (req, res) => {
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
+
 
 const TicketCreate = async (req, res) => {
   try {
@@ -2078,5 +2294,6 @@ module.exports = {
   getUsageProfile,
   getUsageAndFeedback,
   CabinwiseHealthStatus,
+  UserDelete
   // AllComplexData,
 };
