@@ -1486,12 +1486,7 @@ const AllComplexesFaultList = async (req, res) => {
       ],
     });
 
-    // Validate device count
-    if (devices.length !== 40) {
-      return res
-        .status(400)
-        .json({ error: `Expected 40 devices, found ${devices.length}` });
-    }
+
 
     // Check for undefined cabin_name
     const invalidDevices = devices.filter(
