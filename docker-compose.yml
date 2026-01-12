@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  server:
+  
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docker_test_server
+    ports:
+      - "3366:3366"
+    environment:
+      - TZ=Asia/Kolkata
+      - PORT=3366
+    restart: always

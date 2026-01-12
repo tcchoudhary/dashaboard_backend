@@ -18,7 +18,7 @@ const app = express();
 const logger = require("morgan");
 require('dotenv').config();
 
-const port = 8000;
+const port = 3366;
 const host = '0.0.0.0';
 app.use(bodyParser.urlencoded({ limit: '5000mb', extended: false }));
 app.use(bodyParser.json({ limit: '5000mb' }));
