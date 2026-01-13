@@ -2071,19 +2071,104 @@ const UpdateTicketStatus = async (req, res) => {
 };
 
 
+// const getUsageProfile = async (req, res) => {
+//   try {
+//     const { days = 30, ComplexId } = req.body;
+//     const daysInt = parseInt(days);
+//     const daysAgo = new Date();
+//     daysAgo.setDate(daysAgo.getDate() - daysInt);
+//     const isMonthly = daysInt > 90;
+//     const dateGrouping = isMonthly
+//       ? [
+//         sequelize.literal("DATE_FORMAT(`UsageProfile`.`created_at`, '%Y-%m')"),
+//         "period",
+//       ]
+//       : [sequelize.literal("DATE(`UsageProfile`.`created_at`)"), "period"];
+
+//     const groupBy = ["period", "UsageProfile.cabin_id", "cabin.cabin_name"];
+//     const orderBy = [
+//       [sequelize.literal("period"), "ASC"],
+//       ["cabin_id", "ASC"],
+//     ];
+
+//     const whereConditions = {
+//       created_at: {
+//         [Op.gte]: daysAgo,
+//       },
+//     };
+
+
+
+//     const whereConditions2 = {}
+
+//     if (ComplexId) {
+//       whereConditions2["complex_id"] = ComplexId; // Assuming ComplexId is a field in the CabinModel
+//     }
+
+//     const userCounts = await UsageProfile.findAll({
+//       attributes: [
+//         [sequelize.col("UsageProfile.cabin_id"), "cabin_id"],
+//         [
+//           sequelize.fn("COUNT", sequelize.col("UsageProfile.id")),
+//           "total_entries",
+//         ],
+//         [
+//           sequelize.fn(
+//             "COUNT",
+//             sequelize.where(sequelize.col("UsageProfile.Entrytype"), "Entry")
+//           ),
+//           "user_count",
+//         ],
+//         [sequelize.col("cabin.cabin_name"), "cabin_name"],
+//         ...[dateGrouping], // ⬅️ adds period
+//       ],
+//       include: [
+//         {
+//           model: CabinModel,
+//           as: "cabin",
+//           attributes: [],
+//           required: true,
+//           where: whereConditions2, // This condition will be applied here
+//         },
+//       ],
+//       where: whereConditions,
+//       group: groupBy,
+//       order: orderBy,
+//     });
+
+//     const formattedData = userCounts.map((record) => ({
+//       period: record.get("period"), // 👈 period = date or month
+//       cabin_id: record.get("cabin_id"),
+//       cabin_name: record.get("cabin_name"),
+//       total_entries: record.get("total_entries"),
+//       user_count: record.get("user_count"),
+//     }));
+
+//     res.json({
+//       message: "Usage data retrieved successfully",
+//       data: formattedData,
+//       aggregation: isMonthly ? "monthly" : "daily",
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in getUsageProfile:", error);
+//     res.status(500).json({ error: "Server error", details: error.message });
+//   }
+// };
+
+
 const getUsageProfile = async (req, res) => {
   try {
     const { days = 30, ComplexId } = req.body;
     const daysInt = parseInt(days);
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - daysInt);
+
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - daysInt);
+
     const isMonthly = daysInt > 90;
+
     const dateGrouping = isMonthly
-      ? [
-        sequelize.literal("DATE_FORMAT(`UsageProfile`.`created_at`, '%Y-%m')"),
-        "period",
-      ]
-      : [sequelize.literal("DATE(`UsageProfile`.`created_at`)"), "period"];
+      ? [sequelize.literal("DATE_FORMAT(`UsageProfile`.`Entry_TIME`, '%Y-%m')"), "period"]
+      : [sequelize.literal("DATE(`UsageProfile`.`Entry_TIME`)"), "period"];
 
     const groupBy = ["period", "UsageProfile.cabin_id", "cabin.cabin_name"];
     const orderBy = [
@@ -2092,26 +2177,18 @@ const getUsageProfile = async (req, res) => {
     ];
 
     const whereConditions = {
-      created_at: {
-        [Op.gte]: daysAgo,
+      Entry_TIME: {
+        [Op.gte]: fromDate,
       },
     };
 
-
-
-    const whereConditions2 = {}
-
-    if (ComplexId) {
-      whereConditions2["complex_id"] = ComplexId; // Assuming ComplexId is a field in the CabinModel
-    }
+    const whereConditions2 = {};
+    if (ComplexId) whereConditions2["complex_id"] = ComplexId;
 
     const userCounts = await UsageProfile.findAll({
       attributes: [
         [sequelize.col("UsageProfile.cabin_id"), "cabin_id"],
-        [
-          sequelize.fn("COUNT", sequelize.col("UsageProfile.id")),
-          "total_entries",
-        ],
+        [sequelize.fn("COUNT", sequelize.col("UsageProfile.id")), "total_entries"],
         [
           sequelize.fn(
             "COUNT",
@@ -2120,7 +2197,7 @@ const getUsageProfile = async (req, res) => {
           "user_count",
         ],
         [sequelize.col("cabin.cabin_name"), "cabin_name"],
-        ...[dateGrouping], // ⬅️ adds period
+        dateGrouping,
       ],
       include: [
         {
@@ -2128,7 +2205,7 @@ const getUsageProfile = async (req, res) => {
           as: "cabin",
           attributes: [],
           required: true,
-          where: whereConditions2, // This condition will be applied here
+          where: whereConditions2,
         },
       ],
       where: whereConditions,
@@ -2137,7 +2214,7 @@ const getUsageProfile = async (req, res) => {
     });
 
     const formattedData = userCounts.map((record) => ({
-      period: record.get("period"), // 👈 period = date or month
+      period: record.get("period"),
       cabin_id: record.get("cabin_id"),
       cabin_name: record.get("cabin_name"),
       total_entries: record.get("total_entries"),
@@ -2156,19 +2233,16 @@ const getUsageProfile = async (req, res) => {
 };
 
 
+
 const getUsageAndFeedback = async (req, res) => {
   try {
     const { days = 30, ComplexId } = req.body;
 
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - parseInt(days));
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - parseInt(days));
 
-    const whereConditions2 = {}
-
-    if (ComplexId) {
-      whereConditions2["complex_id"] = ComplexId; // Assuming ComplexId is a field in the CabinModel
-    }
-
+    const whereConditions2 = {};
+    if (ComplexId) whereConditions2["complex_id"] = ComplexId;
 
     const usageAndFeedbacks = await UsageAndFeedback.findAll({
       attributes: [
@@ -2178,32 +2252,82 @@ const getUsageAndFeedback = async (req, res) => {
         "created_at",
         "TotalUsage",
         "TotalWaterRecycled",
-        // ... (jo aur chahiye wo bhi)
       ],
       where: {
         created_at: {
-          [Op.gte]: daysAgo,
+          [Op.gte]: fromDate,
         },
       },
       include: [
         {
           model: CabinModel,
-          where: whereConditions2, // This condition will be applied here
           as: "cabin",
-          attributes: ["cabin_name"], // 🔥 yahi chahiye
+          where: whereConditions2,
+          attributes: ["cabin_name"],
         },
       ],
       order: [["created_at", "DESC"]],
     });
+
     res.json({
       message: "Usage and feedback data retrieved successfully",
       data: usageAndFeedbacks,
     });
   } catch (error) {
-    console.error("Error in getUsageAndFeedback:", error.message);
+    console.error("❌ Error in getUsageAndFeedback:", error.message);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
+
+
+// const getUsageAndFeedback = async (req, res) => {
+//   try {
+//     const { days = 30, ComplexId } = req.body;
+
+//     const daysAgo = new Date();
+//     daysAgo.setDate(daysAgo.getDate() - parseInt(days));
+
+//     const whereConditions2 = {}
+
+//     if (ComplexId) {
+//       whereConditions2["complex_id"] = ComplexId; // Assuming ComplexId is a field in the CabinModel
+//     }
+
+
+//     const usageAndFeedbacks = await UsageAndFeedback.findAll({
+//       attributes: [
+//         "id",
+//         "cabin_id",
+//         "AverageFeedback",
+//         "created_at",
+//         "TotalUsage",
+//         "TotalWaterRecycled",
+//         // ... (jo aur chahiye wo bhi)
+//       ],
+//       where: {
+//         created_at: {
+//           [Op.gte]: daysAgo,
+//         },
+//       },
+//       include: [
+//         {
+//           model: CabinModel,
+//           where: whereConditions2, // This condition will be applied here
+//           as: "cabin",
+//           attributes: ["cabin_name"], // 🔥 yahi chahiye
+//         },
+//       ],
+//       order: [["created_at", "DESC"]],
+//     });
+//     res.json({
+//       message: "Usage and feedback data retrieved successfully",
+//       data: usageAndFeedbacks,
+//     });
+//   } catch (error) {
+//     console.error("Error in getUsageAndFeedback:", error.message);
+//     res.status(500).json({ error: "Server error", details: error.message });
+//   }
+// };
 
 const CabinwiseHealthStatus = async (req, res) => {
   try {
